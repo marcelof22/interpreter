@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<program language="SOL25" description="Complex SOL25 program testing various features">
+  <class name="Main" parent="Object">
+    <method selector="run">
+      <block arity="0">
+        <!-- Vytvoříme a vypíšeme celé číslo -->
+        <assign order="1">
+          <var name="x"/>
+          <expr>
+            <literal class="Integer" value="42"/>
+          </expr>
+        </assign>
+        <assign order="2">
+          <var name="y"/>
+          <expr>
+            <send selector="asString">
+              <expr>
+                <var name="x"/>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+        <assign order="3">
+          <var name="_"/>
+          <expr>
+            <send selector="print">
+              <expr>
+                <var name="y"/>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+        
+        <!-- Ukázka jednoduchých výpočtů -->
+        <assign order="4">
+          <var name="a"/>
+          <expr>
+            <literal class="Integer" value="10"/>
+          </expr>
+        </assign>
+        <assign order="5">
+          <var name="b"/>
+          <expr>
+            <literal class="Integer" value="5"/>
+          </expr>
+        </assign>
+        <assign order="6">
+          <var name="c"/>
+          <expr>
+            <send selector="plus:">
+              <expr>
+                <var name="a"/>
+              </expr>
+              <arg order="1">
+                <expr>
+                  <var name="b"/>
+                </expr>
+              </arg>
+            </send>
+          </expr>
+        </assign>
+        <assign order="7">
+          <var name="msg"/>
+          <expr>
+            <literal class="String" value="\nA + B = "/>
+          </expr>
+        </assign>
+        <assign order="8">
+          <var name="_"/>
+          <expr>
+            <send selector="print">
+              <expr>
+                <var name="msg"/>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+        <assign order="9">
+          <var name="_"/>
+          <expr>
+            <send selector="print">
+              <expr>
+                <send selector="asString">
+                  <expr>
+                    <var name="c"/>
+                  </expr>
+                </send>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+        
+        <!-- Ukázka větvení -->
+        <assign order="10">
+          <var name="condition"/>
+          <expr>
+            <send selector="greaterThan:">
+              <expr>
+                <var name="a"/>
+              </expr>
+              <arg order="1">
+                <expr>
+                  <var name="b"/>
+                </expr>
+              </arg>
+            </send>
+          </expr>
+        </assign>
+        <assign order="11">
+          <var name="_"/>
+          <expr>
+            <send selector="ifTrue:ifFalse:">
+              <expr>
+                <var name="condition"/>
+              </expr>
+              <arg order="1">
+                <expr>
+                  <block arity="0">
+                    <assign order="1">
+                      <var name="_"/>
+                      <expr>
+                        <send selector="print">
+                          <expr>
+                            <literal class="String" value="\nA is greater than B"/>
+                          </expr>
+                        </send>
+                      </expr>
+                    </assign>
+                  </block>
+                </expr>
+              </arg>
+              <arg order="2">
+                <expr>
+                  <block arity="0">
+                    <assign order="1">
+                      <var name="_"/>
+                      <expr>
+                        <send selector="print">
+                          <expr>
+                            <literal class="String" value="\nA is not greater than B"/>
+                          </expr>
+                        </send>
+                      </expr>
+                    </assign>
+                  </block>
+                </expr>
+              </arg>
+            </send>
+          </expr>
+        </assign>
+        
+        <!-- Ukázka cyklu s blokem -->
+        <assign order="12">
+          <var name="count"/>
+          <expr>
+            <literal class="Integer" value="3"/>
+          </expr>
+        </assign>
+        <assign order="13">
+          <var name="_"/>
+          <expr>
+            <send selector="print">
+              <expr>
+                <literal class="String" value="\nCounting: "/>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+        <assign order="14">
+          <var name="_"/>
+          <expr>
+            <send selector="timesRepeat:">
+              <expr>
+                <var name="count"/>
+              </expr>
+              <arg order="1">
+                <expr>
+                  <block arity="1">
+                    <parameter name="i" order="1"/>
+                    <assign order="1">
+                      <var name="_"/>
+                      <expr>
+                        <send selector="print">
+                          <expr>
+                            <send selector="asString">
+                              <expr>
+                                <var name="i"/>
+                              </expr>
+                            </send>
+                          </expr>
+                        </send>
+                      </expr>
+                    </assign>
+                    <assign order="2">
+                      <var name="_"/>
+                      <expr>
+                        <send selector="print">
+                          <expr>
+                            <literal class="String" value=" "/>
+                          </expr>
+                        </send>
+                      </expr>
+                    </assign>
+                  </block>
+                </expr>
+              </arg>
+            </send>
+          </expr>
+        </assign>
+        
+        <!-- Vytvoření a práce s vlastními objekty -->
+        <assign order="15">
+          <var name="point"/>
+          <expr>
+            <send selector="new">
+              <expr>
+                <literal class="class" value="Point"/>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+        <assign order="16">
+          <var name="_"/>
+          <expr>
+            <send selector="x:">
+              <expr>
+                <var name="point"/>
+              </expr>
+              <arg order="1">
+                <expr>
+                  <literal class="Integer" value="10"/>
+                </expr>
+              </arg>
+            </send>
+          </expr>
+        </assign>
+        <assign order="17">
+          <var name="_"/>
+          <expr>
+            <send selector="y:">
+              <expr>
+                <var name="point"/>
+              </expr>
+              <arg order="1">
+                <expr>
+                  <literal class="Integer" value="20"/>
+                </expr>
+              </arg>
+            </send>
+          </expr>
+        </assign>
+        <assign order="18">
+          <var name="_"/>
+          <expr>
+            <send selector="print">
+              <expr>
+                <literal class="String" value="\nPoint coordinates: "/>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+        <assign order="19">
+          <var name="_"/>
+          <expr>
+            <send selector="printCoordinates">
+              <expr>
+                <var name="point"/>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+      </block>
+    </method>
+  </class>
+  
+  <!-- Definice třídy Point pro testování práce s vlastními objekty -->
+  <class name="Point" parent="Object">
+    <method selector="printCoordinates">
+      <block arity="0">
+        <assign order="1">
+          <var name="_"/>
+          <expr>
+            <send selector="print">
+              <expr>
+                <literal class="String" value="("/>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+        <assign order="2">
+          <var name="_"/>
+          <expr>
+            <send selector="print">
+              <expr>
+                <send selector="asString">
+                  <expr>
+                    <send selector="x">
+                      <expr>
+                        <var name="self"/>
+                      </expr>
+                    </send>
+                  </expr>
+                </send>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+        <assign order="3">
+          <var name="_"/>
+          <expr>
+            <send selector="print">
+              <expr>
+                <literal class="String" value=", "/>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+        <assign order="4">
+          <var name="_"/>
+          <expr>
+            <send selector="print">
+              <expr>
+                <send selector="asString">
+                  <expr>
+                    <send selector="y">
+                      <expr>
+                        <var name="self"/>
+                      </expr>
+                    </send>
+                  </expr>
+                </send>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+        <assign order="5">
+          <var name="_"/>
+          <expr>
+            <send selector="print">
+              <expr>
+                <literal class="String" value=")"/>
+              </expr>
+            </send>
+          </expr>
+        </assign>
+      </block>
+    </method>
+  </class>
+</program>

@@ -78,7 +78,11 @@ class SOLObject
     {
         // First check if it's an attribute access (no arguments)
         if (empty($arguments) && !$useSuper && $this->hasAttribute($selector)) {
-            return $this->getAttribute($selector);
+            $attribute = $this->getAttribute($selector);
+            if ($attribute === null) {
+                throw new DoNotUnderstandException("Attribute '$selector' not found");
+            }
+            return $attribute;
         }
         
         // Then check if it's an attribute setter (one argument)

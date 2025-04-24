@@ -16,6 +16,7 @@ use IPP\Student\AST\Variable;
 use IPP\Student\Exception\DoNotUnderstandException;
 use IPP\Student\Runtime\SOL\SOLClass;
 use IPP\Student\Runtime\SOL\SOLObject;
+use IPP\Student\Exception\TypeErrorException;
 
 /**
  * Interpreter for executing SOL25 programs
@@ -172,7 +173,8 @@ class Interpreter implements NodeVisitor
             // Execute block statements
             $lastResult = $this->environment->getObjectFactory()->getNil();
             foreach ($block->getStatements() as $statement) {
-                $lastResult = $this->visitAssignment($statement);
+                $result = $this->visitAssignment($statement);
+                $lastResult = $result;
             }
             
             return $lastResult;
@@ -228,11 +230,18 @@ class Interpreter implements NodeVisitor
     
     /**
      * Visit an assignment node
+     * 
+     * @return SOLObject The result of the assignment
      */
-    public function visitAssignment(Assignment $assignment): mixed
+    public function visitAssignment(Assignment $assignment): SOLObject
     {
         // Evaluate the expression
         $value = $assignment->getExpression()->accept($this);
+        
+        // Ensure value is a SOLObject
+        if (!($value instanceof SOLObject)) {
+            throw new TypeErrorException("Expression did not evaluate to a SOLObject");
+        }
         
         // Check for special case: assignment to '_' (discard value)
         if ($assignment->getVariableName() === '_') {
@@ -280,25 +289,39 @@ class Interpreter implements NodeVisitor
     
     /**
      * Visit a message send node
+     * 
+     * @param MessageSend $messageSend Message send node
+     * @return SOLObject The result of sending the message
+     * @throws TypeErrorException If the receiver or arguments do not evaluate to SOLObjects
      */
-    public function visitMessageSend(MessageSend $messageSend): mixed
+    public function visitMessageSend(MessageSend $messageSend): SOLObject
     {
         // Evaluate the receiver
-        $receiver = $messageSend->getReceiver()->accept($this);
+        $receiverResult = $messageSend->getReceiver()->accept($this);
+        
+        // Ensure receiver is a SOLObject
+        if (!($receiverResult instanceof SOLObject)) {
+            throw new TypeErrorException("Receiver did not evaluate to a SOLObject");
+        }
+        
+        $receiver = $receiverResult;
         $receiverExpr = $messageSend->getReceiver();
         
         // Check for special case: super
         $useSuper = false;
-        if ($receiver instanceof SOLObject && 
-            $receiverExpr instanceof Variable && 
-            $receiverExpr->getName() === 'super') {
+        if ($receiverExpr instanceof Variable && $receiverExpr->getName() === 'super') {
+            // Odstraněna zbytečná kontrola instanceof SOLObject
             $useSuper = true;
         }
         
         // Evaluate all arguments
         $arguments = [];
         foreach ($messageSend->getArguments() as $argument) {
-            $arguments[] = $argument->accept($this);
+            $argResult = $argument->accept($this);
+            if (!($argResult instanceof SOLObject)) {
+                throw new TypeErrorException("Argument did not evaluate to a SOLObject");
+            }
+            $arguments[] = $argResult;
         }
         
         // Send the message

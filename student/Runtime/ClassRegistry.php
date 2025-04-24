@@ -6,6 +6,7 @@ use IPP\Student\AST\ClassNode;
 use IPP\Student\Exception\DoNotUnderstandException;
 use IPP\Student\Runtime\BuiltIn\BuiltInMethodRegistry;
 use IPP\Student\Runtime\SOL\SOLClass;
+use IPP\Student\Exception\InternalErrorException;
 
 /**
  * Registry of all classes in the program
@@ -78,8 +79,17 @@ class ClassRegistry
      */
     public function initializeBuiltInClasses(ObjectFactory $factory): void
     {
-        // This will be implemented later
-        // We need to create all built-in classes (Object, Integer, String, etc.)
+        // Vytvoříme a inicializujeme vestavěné třídy pomocí BuiltInClassInitializer
+        $initializer = new BuiltIn\BuiltInClassInitializer();
+        $initializer->initializeBuiltInClasses($this, $factory);
+        
+        // Ujistíme se, že všechny potřebné třídy jsou registrovány
+        $requiredClasses = ['Object', 'Nil', 'True', 'False', 'Integer', 'String', 'Block'];
+        foreach ($requiredClasses as $className) {
+            if (!$this->hasClass($className)) {
+                throw new InternalErrorException("Built-in class '$className' was not properly initialized");
+            }
+        }
     }
     
     /**

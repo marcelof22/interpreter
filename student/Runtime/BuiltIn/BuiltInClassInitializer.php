@@ -89,7 +89,7 @@ class BuiltInClassInitializer
      * @param \IPP\Student\Runtime\ClassRegistry $registry Class registry
      * @param ObjectFactory $factory Object factory
      * @param SOLClass $objectClass The Object class
-     * @return array Array of Boolean classes [True, False]
+     * @return array<string, SOLClass> Array of Boolean classes ["True" => $trueClass, "False" => $falseClass]
      */
     private function initializeBooleanClasses($registry, $factory, $objectClass): array
     {
@@ -106,7 +106,7 @@ class BuiltInClassInitializer
         // Register built-in methods
         $this->registerBooleanMethods($trueClass, $falseClass, $factory);
         
-        return [$trueClass, $falseClass];
+        return ["True" => $trueClass, "False" => $falseClass];
     }
     
     /**
@@ -226,26 +226,26 @@ class BuiltInClassInitializer
         
         // Type checking methods
         $registry->registerMethod('Object', 'isNumber', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                return $factory->getFalse();
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+                return $env->getObjectFactory()->getFalse();
             })
         );
         
         $registry->registerMethod('Object', 'isString', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                return $factory->getFalse();
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+                return $env->getObjectFactory()->getFalse();
             })
         );
         
         $registry->registerMethod('Object', 'isBlock', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                return $factory->getFalse();
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+                return $env->getObjectFactory()->getFalse();
             })
         );
         
         $registry->registerMethod('Object', 'isNil', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                return $factory->getFalse();
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+                return $env->getObjectFactory()->getFalse();
             })
         );
         
@@ -253,7 +253,7 @@ class BuiltInClassInitializer
         
         // new
         $registry->registerClassMethod('Object', 'new', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLClass $receiver, array $arguments) use ($factory) {
+            new SimpleBuiltInMethod(function(Environment $env, SOLClass $receiver, array $arguments) {
                 if (count($arguments) !== 0) {
                     throw new DoNotUnderstandException('Class method new expected 0 arguments');
                 }
@@ -264,7 +264,7 @@ class BuiltInClassInitializer
         
         // from:
         $registry->registerClassMethod('Object', 'from:', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLClass $receiver, array $arguments) use ($factory) {
+            new SimpleBuiltInMethod(function(Environment $env, SOLClass $receiver, array $arguments) {
                 if (count($arguments) !== 1) {
                     throw new DoNotUnderstandException('Class method from: expected 1 argument');
                 }
@@ -308,8 +308,8 @@ class BuiltInClassInitializer
         
         // isNil (redefinováno pro Nil)
         $registry->registerMethod('Nil', 'isNil', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                return $factory->getTrue();
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+                return $env->getObjectFactory()->getTrue();
             })
         );
     }
@@ -340,7 +340,7 @@ class BuiltInClassInitializer
         
         // and:
         $registry->registerMethod('True', 'and:', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
                 if (count($arguments) !== 1) {
                     throw new DoNotUnderstandException('Method and: expected 1 argument');
                 }
@@ -366,16 +366,16 @@ class BuiltInClassInitializer
         );
         
         // ifTrue:ifFalse:
-        $registry->registerMethod('True', 'ifTrue:ifFalse:', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
+        $registry->registerMethod('False', 'ifTrue:ifFalse:', 
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
                 if (count($arguments) !== 2) {
                     throw new DoNotUnderstandException('Method ifTrue:ifFalse: expected 2 arguments');
                 }
                 
-                $trueBlock = $arguments[0];
+                $falseBlock = $arguments[1];
                 
-                // Vyhodnotí první argument (true blok)
-                $result = $trueBlock->sendMessage('value', []);
+                // Vyhodnotí druhý argument (false blok)
+                $result = $falseBlock->sendMessage('value', []);
                 return $result;
             })
         );
@@ -418,7 +418,7 @@ class BuiltInClassInitializer
         
         // or:
         $registry->registerMethod('False', 'or:', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
                 if (count($arguments) !== 1) {
                     throw new DoNotUnderstandException('Method or: expected 1 argument');
                 }
@@ -432,8 +432,8 @@ class BuiltInClassInitializer
         );
         
         // ifTrue:ifFalse:
-        $registry->registerMethod('False', 'ifTrue:ifFalse:', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
+            $registry->registerMethod('False', 'ifTrue:ifFalse:', 
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
                 if (count($arguments) !== 2) {
                     throw new DoNotUnderstandException('Method ifTrue:ifFalse: expected 2 arguments');
                 }
@@ -617,7 +617,7 @@ class BuiltInClassInitializer
         
         // asInteger
         $registry->registerMethod('Integer', 'asInteger', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
                 if (count($arguments) !== 0) {
                     throw new DoNotUnderstandException('Method asInteger expected 0 arguments');
                 }
@@ -659,8 +659,8 @@ class BuiltInClassInitializer
         
         // isNumber (redefinováno pro Integers)
         $registry->registerMethod('Integer', 'isNumber', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                return $factory->getTrue();
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+                return $env->getObjectFactory()->getTrue();
             })
         );
     }
@@ -677,7 +677,7 @@ class BuiltInClassInitializer
         
         // Redefinovat asString
         $registry->registerMethod('String', 'asString', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
                 if (count($arguments) !== 0) {
                     throw new DoNotUnderstandException('Method asString expected 0 arguments');
                 }
@@ -688,7 +688,7 @@ class BuiltInClassInitializer
         
         // print
         $registry->registerMethod('String', 'print', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
                 if (count($arguments) !== 0) {
                     throw new DoNotUnderstandException('Method print expected 0 arguments');
                 }
@@ -810,176 +810,192 @@ class BuiltInClassInitializer
             })
         );
 
-        // isString (redefinováno pro Strings)
-        $registry->registerMethod('String', 'isString', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                return $factory->getTrue();
-            })
-        );
-        
-        // Třídní metoda read
-        $registry->registerClassMethod('String', 'read', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLClass $receiver, array $arguments) use ($factory) {
-                if (count($arguments) !== 0) {
-                    throw new DoNotUnderstandException('Class method read expected 0 arguments');
-                }
-                
-                // Přečíst řádek ze vstupu
-                $line = Interpreter::getInstance()->getIO()->readLine();
-                
-                if ($line === null) {
-                    return $factory->createString(''); // Prázdný řetězec při EOF
-                }
-                
-                return $factory->createString($line);
-            })
-        );
-    }
-    
-    /**
-     * Register methods for the Block class
-     * 
-     * @param SOLClass $blockClass The Block class
-     * @param ObjectFactory $factory Object factory
-     */
-    private function registerBlockMethods(SOLClass $blockClass, ObjectFactory $factory): void
-    {
-        $registry = $blockClass->getClass()->getClassRegistry()->getBuiltInMethodRegistry();
-        
-        // value (pro bezparametrický blok)
-        $registry->registerMethod('Block', 'value', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                if (count($arguments) !== 0) {
-                    throw new DoNotUnderstandException('Method value expected 0 arguments');
-                }
-                
-                if (!($receiver instanceof SOLBlock)) {
-                    throw new TypeErrorException('Receiver of value must be a Block');
-                }
-                
-                $block = $receiver->getBlock();
-                if ($block->getArity() !== 0) {
-                    throw new DoNotUnderstandException('Block arity mismatch: expected 0 parameters');
-                }
-                
-                $interpreter = Interpreter::getInstance();
-                return $interpreter->executeBlock($block, $env->getCurrentFrame()->getSelf());
-            })
-        );
-        
-        // value: (pro blok s jedním parametrem)
-        $registry->registerMethod('Block', 'value:', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                if (count($arguments) !== 1) {
-                    throw new DoNotUnderstandException('Method value: expected 1 argument');
-                }
-                
-                if (!($receiver instanceof SOLBlock)) {
-                    throw new TypeErrorException('Receiver of value: must be a Block');
-                }
-                
-                $block = $receiver->getBlock();
-                if ($block->getArity() !== 1) {
-                    throw new DoNotUnderstandException('Block arity mismatch: expected 1 parameter');
-                }
-                
-                $interpreter = Interpreter::getInstance();
-                return $interpreter->executeBlock($block, $env->getCurrentFrame()->getSelf(), $arguments);
-            })
-        );
-        
-        // value:value: (pro blok se dvěma parametry)
-        $registry->registerMethod('Block', 'value:value:', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                if (count($arguments) !== 2) {
-                    throw new DoNotUnderstandException('Method value:value: expected 2 arguments');
-                }
-                
-                if (!($receiver instanceof SOLBlock)) {
-                    throw new TypeErrorException('Receiver of value:value: must be a Block');
-                }
-                
-                $block = $receiver->getBlock();
-                if ($block->getArity() !== 2) {
-                    throw new DoNotUnderstandException('Block arity mismatch: expected 2 parameters');
-                }
-                
-                $interpreter = Interpreter::getInstance();
-                return $interpreter->executeBlock($block, $env->getCurrentFrame()->getSelf(), $arguments);
-            })
-        );
-        
-        // value:value:value: (pro blok se třemi parametry)
-        $registry->registerMethod('Block', 'value:value:value:', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                if (count($arguments) !== 3) {
-                    throw new DoNotUnderstandException('Method value:value:value: expected 3 arguments');
-                }
-                
-                if (!($receiver instanceof SOLBlock)) {
-                    throw new TypeErrorException('Receiver of value:value:value: must be a Block');
-                }
-                
-                $block = $receiver->getBlock();
-                if ($block->getArity() !== 3) {
-                    throw new DoNotUnderstandException('Block arity mismatch: expected 3 parameters');
-                }
-                
-                $interpreter = Interpreter::getInstance();
-                return $interpreter->executeBlock($block, $env->getCurrentFrame()->getSelf(), $arguments);
-            })
-        );
-        
-        // whileTrue:
-        $registry->registerMethod('Block', 'whileTrue:', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                if (count($arguments) !== 1) {
-                    throw new DoNotUnderstandException('Method whileTrue: expected 1 argument');
-                }
-                
-                if (!($receiver instanceof SOLBlock)) {
-                    throw new TypeErrorException('Receiver of whileTrue: must be a Block');
-                }
-                
-                $conditionBlock = $receiver;
-                $bodyBlock = $arguments[0];
-                
-                // Vykonávat blok, dokud je podmínka true
-                $lastResult = $factory->getNil();
-                
-                while (true) {
-                    // Vyhodnotit podmínku
-                    $condition = $conditionBlock->sendMessage('value', []);
-                    
-                    // Pokud není true, končíme
-                    if ($condition !== $factory->getTrue()) {
-                        break;
-                    }
-                    
-                    // Vykonat tělo cyklu
-                    $lastResult = $bodyBlock->sendMessage('value', []);
-                }
-                
-                return $lastResult;
-            })
-        );
-        
-        // isBlock (redefinováno pro Block)
-        $registry->registerMethod('Block', 'isBlock', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                return $factory->getTrue();
-            })
-        );
-        
-        // asString
-        $registry->registerMethod('Block', 'asString', 
-            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
-                if (count($arguments) !== 0) {
-                    throw new DoNotUnderstandException('Method asString expected 0 arguments');
-                }
-                
-                return $factory->createString('a Block');
-            })
-        );
-    }
+       // isString (redefinováno pro Strings)
+       $registry->registerMethod('String', 'isString', 
+           new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+               return $env->getObjectFactory()->getTrue();
+           })
+       );
+       
+       // Třídní metoda read
+       $registry->registerClassMethod('String', 'read', 
+           new SimpleBuiltInMethod(function(Environment $env, SOLClass $receiver, array $arguments) {
+               if (count($arguments) !== 0) {
+                   throw new DoNotUnderstandException('Class method read expected 0 arguments');
+               }
+               
+               // Přečíst řádek ze vstupu
+               $line = Interpreter::getInstance()->getIO()->readLine();
+               
+               if ($line === null) {
+                   return $env->getObjectFactory()->createString(''); // Prázdný řetězec při EOF
+               }
+               
+               return $env->getObjectFactory()->createString($line);
+           })
+       );
+   }
+   
+   /**
+    * Register methods for the Block class
+    * 
+    * @param SOLClass $blockClass The Block class
+    * @param ObjectFactory $factory Object factory
+    */
+   private function registerBlockMethods(SOLClass $blockClass, ObjectFactory $factory): void
+   {
+       $registry = $blockClass->getClass()->getClassRegistry()->getBuiltInMethodRegistry();
+       
+       // value (pro bezparametrický blok)
+       $registry->registerMethod('Block', 'value', 
+           new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+               if (count($arguments) !== 0) {
+                   throw new DoNotUnderstandException('Method value expected 0 arguments');
+               }
+               
+               if (!($receiver instanceof SOLBlock)) {
+                   throw new TypeErrorException('Receiver of value must be a Block');
+               }
+               
+               $block = $receiver->getBlock();
+               if ($block->getArity() !== 0) {
+                   throw new DoNotUnderstandException('Block arity mismatch: expected 0 parameters');
+               }
+               
+               $interpreter = Interpreter::getInstance();
+               $currentFrame = $env->getCurrentFrame();
+               if ($currentFrame === null) {
+                   throw new TypeErrorException('No current frame for block execution');
+               }
+               return $interpreter->executeBlock($block, $currentFrame->getSelf());
+           })
+       );
+       
+       // value: (pro blok s jedním parametrem)
+       $registry->registerMethod('Block', 'value:', 
+           new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+               if (count($arguments) !== 1) {
+                   throw new DoNotUnderstandException('Method value: expected 1 argument');
+               }
+               
+               if (!($receiver instanceof SOLBlock)) {
+                   throw new TypeErrorException('Receiver of value: must be a Block');
+               }
+               
+               $block = $receiver->getBlock();
+               if ($block->getArity() !== 1) {
+                   throw new DoNotUnderstandException('Block arity mismatch: expected 1 parameter');
+               }
+               
+               $interpreter = Interpreter::getInstance();
+               $currentFrame = $env->getCurrentFrame();
+               if ($currentFrame === null) {
+                   throw new TypeErrorException('No current frame for block execution');
+               }
+               return $interpreter->executeBlock($block, $currentFrame->getSelf(), $arguments);
+           })
+       );
+       
+       // value:value: (pro blok se dvěma parametry)
+       $registry->registerMethod('Block', 'value:value:', 
+           new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+               if (count($arguments) !== 2) {
+                   throw new DoNotUnderstandException('Method value:value: expected 2 arguments');
+               }
+               
+               if (!($receiver instanceof SOLBlock)) {
+                   throw new TypeErrorException('Receiver of value:value: must be a Block');
+               }
+               
+               $block = $receiver->getBlock();
+               if ($block->getArity() !== 2) {
+                   throw new DoNotUnderstandException('Block arity mismatch: expected 2 parameters');
+               }
+               
+               $interpreter = Interpreter::getInstance();
+               $currentFrame = $env->getCurrentFrame();
+               if ($currentFrame === null) {
+                   throw new TypeErrorException('No current frame for block execution');
+               }
+               return $interpreter->executeBlock($block, $currentFrame->getSelf(), $arguments);
+           })
+       );
+       
+       // value:value:value: (pro blok se třemi parametry)
+       $registry->registerMethod('Block', 'value:value:value:', 
+           new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+               if (count($arguments) !== 3) {
+                   throw new DoNotUnderstandException('Method value:value:value: expected 3 arguments');
+               }
+               
+               if (!($receiver instanceof SOLBlock)) {
+                   throw new TypeErrorException('Receiver of value:value:value: must be a Block');
+               }
+               
+               $block = $receiver->getBlock();
+               if ($block->getArity() !== 3) {
+                   throw new DoNotUnderstandException('Block arity mismatch: expected 3 parameters');
+               }
+               
+               $interpreter = Interpreter::getInstance();
+               $currentFrame = $env->getCurrentFrame();
+               if ($currentFrame === null) {
+                   throw new TypeErrorException('No current frame for block execution');
+               }
+               return $interpreter->executeBlock($block, $currentFrame->getSelf(), $arguments);
+           })
+       );
+       
+       // whileTrue:
+       $registry->registerMethod('Block', 'whileTrue:', 
+           new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {
+               if (count($arguments) !== 1) {
+                   throw new DoNotUnderstandException('Method whileTrue: expected 1 argument');
+               }
+               
+               if (!($receiver instanceof SOLBlock)) {
+                   throw new TypeErrorException('Receiver of whileTrue: must be a Block');
+               }
+               
+               $conditionBlock = $receiver;
+               $bodyBlock = $arguments[0];
+               
+               // Vykonávat blok, dokud je podmínka true
+               $lastResult = $factory->getNil();
+               
+               while (true) {
+                   // Vyhodnotit podmínku
+                   $condition = $conditionBlock->sendMessage('value', []);
+                   
+                   // Pokud není true, končíme
+                   if ($condition !== $factory->getTrue()) {
+                       break;
+                   }
+                   
+                   // Vykonat tělo cyklu
+                   $lastResult = $bodyBlock->sendMessage('value', []);
+               }
+               
+               return $lastResult;
+           })
+       );
+       
+       // isBlock (redefinováno pro Block)
+       $registry->registerMethod('Block', 'isBlock', 
+           new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+               return $env->getObjectFactory()->getTrue();
+           })
+       );
+       
+       // asString
+       $registry->registerMethod('Block', 'asString', 
+           new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+               if (count($arguments) !== 0) {
+                   throw new DoNotUnderstandException('Method asString expected 0 arguments');
+               }
+               
+               return $env->getObjectFactory()->createString('a Block');
+           })
+       );
+   }
 }

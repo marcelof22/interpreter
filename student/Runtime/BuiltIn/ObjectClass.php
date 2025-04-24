@@ -27,6 +27,11 @@ class ObjectClass
         // Create the Object class (it has no parent)
         $this->objectClass = new SOLClass('Object', null);
         
+        // Nastavíme ClassRegistry pro Object třídu
+        // Důležité: Musíme to udělat před registrací třídy v registry,
+        // aby bylo možné používat registry při inicializaci dalších tříd
+        $this->objectClass->setClassRegistry($env->getClassRegistry());
+        
         // Register built-in methods
         $this->registerBuiltInMethods($env, $factory);
         
@@ -44,7 +49,8 @@ class ObjectClass
         // Common methods for all objects
         
         // identicalTo:
-        $this->registerMethod('identicalTo:', function(SOLObject $receiver, array $arguments) use ($factory): SOLObject {
+        $this->registerMethod('identicalTo:', function(SOLObject $receiver, array $arguments) use ($env) {
+            // Odstraněn nevyužitý parametr $factory
             if (count($arguments) !== 1) {
                 throw new DoNotUnderstandException('Method identicalTo: expected 1 argument');
             }
@@ -52,11 +58,12 @@ class ObjectClass
             $other = $arguments[0];
             $result = $receiver === $other;
             
-            return $result ? $factory->getTrue() : $factory->getFalse();
+            return $result ? $env->getObjectFactory()->getTrue() : $env->getObjectFactory()->getFalse();
         });
         
         // equalTo:
-        $this->registerMethod('equalTo:', function(SOLObject $receiver, array $arguments) use ($factory): SOLObject {
+        $this->registerMethod('equalTo:', function(SOLObject $receiver, array $arguments) use ($env) {
+            // Odstraněn nevyužitý parametr $factory
             if (count($arguments) !== 1) {
                 throw new DoNotUnderstandException('Method equalTo: expected 1 argument');
             }
@@ -66,40 +73,46 @@ class ObjectClass
             // Default implementation: use identicalTo:
             $result = $receiver === $other;
             
-            return $result ? $factory->getTrue() : $factory->getFalse();
+            return $result ? $env->getObjectFactory()->getTrue() : $env->getObjectFactory()->getFalse();
         });
         
         // asString
-        $this->registerMethod('asString', function(SOLObject $receiver, array $arguments) use ($factory): SOLObject {
+        $this->registerMethod('asString', function(SOLObject $receiver, array $arguments) use ($env) {
+            // Odstraněn nevyužitý parametr $factory
             if (count($arguments) !== 0) {
                 throw new DoNotUnderstandException('Method asString expected 0 arguments');
             }
             
             // Default implementation: return empty string
-            return $factory->createString('');
+            return $env->getObjectFactory()->createString('');
         });
         
         // type checking methods
-        $this->registerMethod('isNumber', function(SOLObject $receiver, array $arguments) use ($factory): SOLObject {
-            return $factory->getFalse();
+        $this->registerMethod('isNumber', function(SOLObject $receiver, array $arguments) use ($env) {
+            // Odstraněn nevyužitý parametr $factory
+            return $env->getObjectFactory()->getFalse();
         });
         
-        $this->registerMethod('isString', function(SOLObject $receiver, array $arguments) use ($factory): SOLObject {
-            return $factory->getFalse();
+        $this->registerMethod('isString', function(SOLObject $receiver, array $arguments) use ($env) {
+            // Odstraněn nevyužitý parametr $factory
+            return $env->getObjectFactory()->getFalse();
         });
         
-        $this->registerMethod('isBlock', function(SOLObject $receiver, array $arguments) use ($factory): SOLObject {
-            return $factory->getFalse();
+        $this->registerMethod('isBlock', function(SOLObject $receiver, array $arguments) use ($env) {
+            // Odstraněn nevyužitý parametr $factory
+            return $env->getObjectFactory()->getFalse();
         });
         
-        $this->registerMethod('isNil', function(SOLObject $receiver, array $arguments) use ($factory): SOLObject {
-            return $factory->getFalse();
+        $this->registerMethod('isNil', function(SOLObject $receiver, array $arguments) use ($env) {
+            // Odstraněn nevyužitý parametr $factory
+            return $env->getObjectFactory()->getFalse();
         });
         
         // Class methods
         
         // new
-        $this->registerClassMethod('new', function(SOLClass $receiver, array $arguments) use ($factory): SOLObject {
+        $this->registerClassMethod('new', function(SOLClass $receiver, array $arguments) {
+            // Odstraněny nevyužité parametry $factory a $env
             if (count($arguments) !== 0) {
                 throw new DoNotUnderstandException('Class method new expected 0 arguments');
             }
@@ -108,7 +121,8 @@ class ObjectClass
         });
         
         // from:
-        $this->registerClassMethod('from:', function(SOLClass $receiver, array $arguments) use ($factory, $env): SOLObject {
+        $this->registerClassMethod('from:', function(SOLClass $receiver, array $arguments) {
+            // Odstraněny nevyužité parametry $factory a $env
             if (count($arguments) !== 1) {
                 throw new DoNotUnderstandException('Class method from: expected 1 argument');
             }
@@ -138,7 +152,16 @@ class ObjectClass
      */
     private function registerMethod(string $selector, callable $implementation): void
     {
-        // Implementation will be added later using a proper method registry
+        // Získáme registr metod z třídního registru
+        $registry = $this->objectClass->getClassRegistry()->getBuiltInMethodRegistry();
+        
+        // Vytvoříme SimpleBuiltInMethod z callbacku
+        $method = new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($implementation) {
+            return $implementation($receiver, $arguments);
+        });
+        
+        // Zaregistrujeme metodu pro třídu Object
+        $registry->registerMethod('Object', $selector, $method);
     }
     
     /**
@@ -149,6 +172,15 @@ class ObjectClass
      */
     private function registerClassMethod(string $selector, callable $implementation): void
     {
-        // Implementation will be added later using a proper method registry
+        // Získáme registr metod z třídního registru
+        $registry = $this->objectClass->getClassRegistry()->getBuiltInMethodRegistry();
+        
+        // Vytvoříme SimpleBuiltInMethod z callbacku
+        $method = new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($implementation) {
+            return $implementation($receiver, $arguments);
+        });
+        
+        // Zaregistrujeme třídní metodu pro třídu Object
+        $registry->registerClassMethod('Object', $selector, $method);
     }
 }

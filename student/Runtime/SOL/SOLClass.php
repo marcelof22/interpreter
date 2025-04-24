@@ -16,7 +16,6 @@ class SOLClass extends SOLObject
     private array $methods = [];
     private ?SOLClass $parent = null;
     private ?ClassNode $classNode = null;
-    private ?\IPP\Student\Runtime\ClassRegistry $classRegistry = null;
     
     /**
      * Create a new SOL class
@@ -73,8 +72,10 @@ class SOLClass extends SOLObject
     
     /**
      * Get the AST class node
+     * 
+     * @return ClassNode|null AST class node or null for built-in classes
      */
-    public function getClassNode(): ClassNode
+    public function getClassNode(): ?ClassNode
     {
         return $this->classNode;
     }
@@ -148,10 +149,12 @@ class SOLClass extends SOLObject
     {
         // Pokud tato třída je sama Object, je třeba najít její ClassRegistry
         if ($this->name === 'Object' && $this->parent === null) {
-            // Třeba najít v atributech
-            $registry = $this->getAttribute('classRegistry');
-            if ($registry instanceof \IPP\Student\Runtime\ClassRegistry) {
-                return $registry;
+            // Získáme wrapper z atributů
+            $wrapper = $this->getAttribute('classRegistry');
+            
+            // Pokud je wrapper specializovaný objekt s registry
+            if ($wrapper instanceof SOLObject && method_exists($wrapper, 'getInternalRegistry')) {
+                return $wrapper->getInternalRegistry();
             }
             
             // Pokud není ClassRegistry, vrátíme výchozí (nemělo by nastat)
@@ -166,7 +169,7 @@ class SOLClass extends SOLObject
         // Nemělo by nastat, ale pro jistotu vracíme nový registry
         return new \IPP\Student\Runtime\ClassRegistry();
     }
-    
+
     /**
      * Set a class registry
      * 
@@ -174,8 +177,27 @@ class SOLClass extends SOLObject
      */
     public function setClassRegistry(\IPP\Student\Runtime\ClassRegistry $registry): void
     {
-        // Ukládáme registry do pole atributů rodičovské třídy
-        parent::setAttribute('classRegistry', $registry);
+        // Jelikož SOLObject podporuje ukládání pouze SOLObject instancí jako atributy,
+        // musíme registry uložit do vhodné struktury
+        
+        // Vytvoříme specializovaný wrapper objekt, který je SOLObject a může ukládat registry
+        $wrapper = new class($this) extends SOLObject {
+            private \IPP\Student\Runtime\ClassRegistry $registry;
+            
+            public function setInternalRegistry(\IPP\Student\Runtime\ClassRegistry $registry): void {
+                $this->registry = $registry;
+            }
+            
+            public function getInternalRegistry(): \IPP\Student\Runtime\ClassRegistry {
+                return $this->registry;
+            }
+        };
+        
+        // Nastavíme registry do wrapperu
+        $wrapper->setInternalRegistry($registry);
+        
+        // Uložíme wrapper do atributů
+        parent::setAttribute('classRegistry', $wrapper);
     }
     
     /**

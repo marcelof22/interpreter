@@ -70,6 +70,7 @@ class ASTBuilder
         // Process method elements
         $methodElements = $element->getElementsByTagName('method');
         foreach ($methodElements as $methodElement) {
+            // Kontrola odstraněna, protože DOMElement je garantován typovou anotací
             $method = $this->processMethod($methodElement);
             $class->addMethod($method);
         }
@@ -98,7 +99,12 @@ class ASTBuilder
             throw new InvalidSourceStructureException('Invalid method: must contain exactly one block');
         }
         
-        $block = $this->processBlock($blockElements->item(0));
+        $blockElement = $blockElements->item(0);
+        if (!($blockElement instanceof DOMElement)) {
+            throw new InvalidSourceStructureException('Invalid method: block is not a DOMElement');
+        }
+        
+        $block = $this->processBlock($blockElement);
         
         return new Method($selector, $block);
     }
@@ -118,6 +124,7 @@ class ASTBuilder
         // Process parameter elements
         $paramElements = $element->getElementsByTagName('parameter');
         foreach ($paramElements as $paramElement) {
+            // Kontrola odstraněna, protože DOMElement je garantován typovou anotací
             $param = $this->processParameter($paramElement);
             $block->addParameter($param);
         }
@@ -125,6 +132,7 @@ class ASTBuilder
         // Process assignment elements
         $assignElements = $element->getElementsByTagName('assign');
         foreach ($assignElements as $assignElement) {
+            // Kontrola odstraněna, protože DOMElement je garantován typovou anotací
             $assign = $this->processAssignment($assignElement);
             $block->addStatement($assign);
         }
@@ -167,6 +175,10 @@ class ASTBuilder
         }
         
         $varElement = $varElements->item(0);
+        if (!($varElement instanceof DOMElement)) {
+            throw new InvalidSourceStructureException('Invalid assignment: var is not a DOMElement');
+        }
+        
         $varName = $varElement->getAttribute('name');
         
         if (!$varName) {
@@ -180,10 +192,15 @@ class ASTBuilder
         }
         
         $exprElement = $exprElements->item(0);
+        if (!($exprElement instanceof DOMElement)) {
+            throw new InvalidSourceStructureException('Invalid assignment: expr is not a DOMElement');
+        }
+        
         $expression = $this->processExpression($exprElement);
         
         return new Assignment($varName, $expression);
     }
+
     
     /**
      * Process an expression element
@@ -198,17 +215,23 @@ class ASTBuilder
         $childNodes = $element->childNodes;
         foreach ($childNodes as $childNode) {
             if ($childNode->nodeType === XML_ELEMENT_NODE) {
-                $nodeName = $childNode->nodeName;
+                // Přidávám explicitní typovou kontrolu a přetypování na DOMElement
+                if (!($childNode instanceof \DOMElement)) {
+                    throw new InvalidSourceStructureException("Invalid expression: child node is not a DOMElement");
+                }
+                $domElement = $childNode;
+                
+                $nodeName = $domElement->nodeName;
                 
                 switch ($nodeName) {
                     case 'literal':
-                        return $this->processLiteral($childNode);
+                        return $this->processLiteral($domElement);
                     case 'var':
-                        return $this->processVariable($childNode);
+                        return $this->processVariable($domElement);
                     case 'send':
-                        return $this->processMessageSend($childNode);
+                        return $this->processMessageSend($domElement);
                     case 'block':
-                        return $this->processBlockExpression($childNode);
+                        return $this->processBlockExpression($domElement);
                     default:
                         throw new InvalidSourceStructureException("Invalid expression: unknown type '$nodeName'");
                 }
@@ -254,7 +277,7 @@ class ASTBuilder
         
         return new Variable($name);
     }
-    
+        
     /**
      * Process a message send element
      * 
@@ -276,19 +299,30 @@ class ASTBuilder
             throw new InvalidSourceStructureException('Invalid message send: missing receiver expression');
         }
         
-        $receiverExpr = $this->processExpression($exprElements->item(0));
+        $receiverExprElement = $exprElements->item(0);
+        if (!($receiverExprElement instanceof DOMElement)) {
+            throw new InvalidSourceStructureException('Invalid message send: receiver is not a DOMElement');
+        }
+        
+        $receiverExpr = $this->processExpression($receiverExprElement);
         $messageSend = new MessageSend($selector, $receiverExpr);
         
         // Process arguments
         $argElements = $element->getElementsByTagName('arg');
         foreach ($argElements as $argElement) {
+            
             // Get argument expression
             $argExprElements = $argElement->getElementsByTagName('expr');
             if ($argExprElements->length !== 1) {
                 throw new InvalidSourceStructureException('Invalid message send: argument must contain exactly one expr');
             }
             
-            $argExpr = $this->processExpression($argExprElements->item(0));
+            $argExprElement = $argExprElements->item(0);
+            if (!($argExprElement instanceof DOMElement)) {
+                throw new InvalidSourceStructureException('Invalid message send: argument expr is not a DOMElement');
+            }
+            
+            $argExpr = $this->processExpression($argExprElement);
             $messageSend->addArgument($argExpr);
         }
         
@@ -300,6 +334,7 @@ class ASTBuilder
      * 
      * @param DOMElement $element XML block element
      * @return Block Block AST node
+     * @throws InvalidSourceStructureException If the block element is invalid
      */
     private function processBlockExpression(DOMElement $element): Block
     {

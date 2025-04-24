@@ -4,6 +4,8 @@ namespace IPP\Student\XML;
 
 use DOMDocument;
 use DOMElement;
+use DOMNode;
+use DOMNodeList;
 use IPP\Core\Exception\XMLException;
 use IPP\Student\AST\Assignment;
 use IPP\Student\AST\Block;
@@ -16,6 +18,7 @@ use IPP\Student\AST\Parameter;
 use IPP\Student\AST\Program;
 use IPP\Student\AST\Variable;
 use IPP\Student\Exception\InvalidSourceStructureException;
+use Exception;
 
 /**
  * Builder for creating AST from XML
@@ -28,25 +31,37 @@ class ASTBuilder
      * @param DOMDocument $xml XML document
      * @return Program Program AST node
      * @throws XMLException If the XML structure is invalid
+     * @throws InvalidSourceStructureException If the source structure is invalid
      */
     public function buildFromXML(DOMDocument $xml): Program
     {
-        $programElement = $xml->documentElement;
-        
-        if (!$programElement || $programElement->nodeName !== 'program') {
-            throw new XMLException('Invalid XML: root element must be <program>');
+        try {
+            $programElement = $xml->documentElement;
+            
+            if (!$programElement || $programElement->nodeName !== 'program') {
+                throw new XMLException('Invalid XML: root element must be <program>');
+            }
+            
+            $program = new Program();
+            
+            // Process class elements
+            /** @var DOMNodeList<DOMNode> $classElements */
+            $classElements = $programElement->getElementsByTagName('class');
+            foreach ($classElements as $classElement) {
+                if ($classElement instanceof DOMElement) {
+                    $class = $this->processClass($classElement);
+                    $program->addClass($class);
+                }
+            }
+            
+            return $program;
+        } catch (InvalidSourceStructureException $e) {
+            // Forward InvalidSourceStructureException
+            throw $e;
+        } catch (Exception $e) {
+            // Convert other exceptions to XMLException
+            throw new XMLException('Error processing XML: ' . $e->getMessage(), $e);
         }
-        
-        $program = new Program();
-        
-        // Process class elements
-        $classElements = $programElement->getElementsByTagName('class');
-        foreach ($classElements as $classElement) {
-            $class = $this->processClass($classElement);
-            $program->addClass($class);
-        }
-        
-        return $program;
     }
     
     /**
@@ -68,11 +83,13 @@ class ASTBuilder
         $class = new ClassNode($name, $parent);
         
         // Process method elements
+        /** @var DOMNodeList<DOMNode> $methodElements */
         $methodElements = $element->getElementsByTagName('method');
         foreach ($methodElements as $methodElement) {
-            // Kontrola odstraněna, protože DOMElement je garantován typovou anotací
-            $method = $this->processMethod($methodElement);
-            $class->addMethod($method);
+            if ($methodElement instanceof DOMElement) {
+                $method = $this->processMethod($methodElement);
+                $class->addMethod($method);
+            }
         }
         
         return $class;
@@ -94,6 +111,7 @@ class ASTBuilder
         }
         
         // Process block element (method body)
+        /** @var DOMNodeList<DOMNode> $blockElements */
         $blockElements = $element->getElementsByTagName('block');
         if ($blockElements->length !== 1) {
             throw new InvalidSourceStructureException('Invalid method: must contain exactly one block');
@@ -101,7 +119,7 @@ class ASTBuilder
         
         $blockElement = $blockElements->item(0);
         if (!($blockElement instanceof DOMElement)) {
-            throw new InvalidSourceStructureException('Invalid method: block is not a DOMElement');
+            throw new InvalidSourceStructureException('Invalid method: block element is not a DOMElement');
         }
         
         $block = $this->processBlock($blockElement);
@@ -122,19 +140,41 @@ class ASTBuilder
         $block = new Block($arity);
         
         // Process parameter elements
+        /** @var DOMNodeList<DOMNode> $paramElements */
         $paramElements = $element->getElementsByTagName('parameter');
+        $parameters = [];
+        
         foreach ($paramElements as $paramElement) {
-            // Kontrola odstraněna, protože DOMElement je garantován typovou anotací
-            $param = $this->processParameter($paramElement);
+            if ($paramElement instanceof DOMElement) {
+                $param = $this->processParameter($paramElement);
+                $order = $param->getOrder();
+                $parameters[$order] = $param;
+            }
+        }
+        
+        // Sort and add parameters by order
+        ksort($parameters);
+        foreach ($parameters as $param) {
             $block->addParameter($param);
         }
         
         // Process assignment elements
+        /** @var DOMNodeList<DOMNode> $assignElements */
         $assignElements = $element->getElementsByTagName('assign');
+        $statements = [];
+        
         foreach ($assignElements as $assignElement) {
-            // Kontrola odstraněna, protože DOMElement je garantován typovou anotací
-            $assign = $this->processAssignment($assignElement);
-            $block->addStatement($assign);
+            if ($assignElement instanceof DOMElement) {
+                $assign = $this->processAssignment($assignElement);
+                $order = (int)$assignElement->getAttribute('order');
+                $statements[$order] = $assign;
+            }
+        }
+        
+        // Sort and add statements by order
+        ksort($statements);
+        foreach ($statements as $statement) {
+            $block->addStatement($statement);
         }
         
         return $block;
@@ -168,39 +208,45 @@ class ASTBuilder
      */
     private function processAssignment(DOMElement $element): Assignment
     {
-        // Get variable element
-        $varElements = $element->getElementsByTagName('var');
-        if ($varElements->length !== 1) {
-            throw new InvalidSourceStructureException('Invalid assignment: must contain exactly one var');
+        // Get var element - looking only for direct children
+        $varElement = null;
+        /** @var DOMNodeList<DOMNode> $childNodes */
+        $childNodes = $element->childNodes;
+        
+        foreach ($childNodes as $childNode) {
+            if ($childNode instanceof DOMElement && $childNode->nodeName === 'var') {
+                $varElement = $childNode;
+                break;
+            }
         }
         
-        $varElement = $varElements->item(0);
-        if (!($varElement instanceof DOMElement)) {
-            throw new InvalidSourceStructureException('Invalid assignment: var is not a DOMElement');
+        if (!$varElement) {
+            throw new InvalidSourceStructureException('Invalid assignment: must contain var element');
         }
         
         $varName = $varElement->getAttribute('name');
         
-        if (!$varName) {
+        if ($varName === '') {
             throw new InvalidSourceStructureException('Invalid assignment: variable has no name');
         }
         
-        // Get expression element
-        $exprElements = $element->getElementsByTagName('expr');
-        if ($exprElements->length !== 1) {
-            throw new InvalidSourceStructureException('Invalid assignment: must contain exactly one expr');
+        // Get expression element - looking only for direct children
+        $exprElement = null;
+        foreach ($childNodes as $childNode) {
+            if ($childNode instanceof DOMElement && $childNode->nodeName === 'expr') {
+                $exprElement = $childNode;
+                break;
+            }
         }
         
-        $exprElement = $exprElements->item(0);
-        if (!($exprElement instanceof DOMElement)) {
-            throw new InvalidSourceStructureException('Invalid assignment: expr is not a DOMElement');
+        if (!$exprElement) {
+            throw new InvalidSourceStructureException('Invalid assignment: must contain expr element');
         }
         
         $expression = $this->processExpression($exprElement);
         
         return new Assignment($varName, $expression);
     }
-
     
     /**
      * Process an expression element
@@ -211,27 +257,23 @@ class ASTBuilder
      */
     private function processExpression(DOMElement $element): Expression
     {
-        // Check the expression type based on the child element
+        // Check expression type based on child element
+        /** @var DOMNodeList<DOMNode> $childNodes */
         $childNodes = $element->childNodes;
+        
         foreach ($childNodes as $childNode) {
-            if ($childNode->nodeType === XML_ELEMENT_NODE) {
-                // Přidávám explicitní typovou kontrolu a přetypování na DOMElement
-                if (!($childNode instanceof \DOMElement)) {
-                    throw new InvalidSourceStructureException("Invalid expression: child node is not a DOMElement");
-                }
-                $domElement = $childNode;
-                
-                $nodeName = $domElement->nodeName;
+            if ($childNode instanceof DOMElement) {
+                $nodeName = $childNode->nodeName;
                 
                 switch ($nodeName) {
                     case 'literal':
-                        return $this->processLiteral($domElement);
+                        return $this->processLiteral($childNode);
                     case 'var':
-                        return $this->processVariable($domElement);
+                        return $this->processVariable($childNode);
                     case 'send':
-                        return $this->processMessageSend($domElement);
+                        return $this->processMessageSend($childNode);
                     case 'block':
-                        return $this->processBlockExpression($domElement);
+                        return $this->processBlockExpression($childNode);
                     default:
                         throw new InvalidSourceStructureException("Invalid expression: unknown type '$nodeName'");
                 }
@@ -253,7 +295,7 @@ class ASTBuilder
         $class = $element->getAttribute('class');
         $value = $element->getAttribute('value');
         
-        if (!$class) {
+        if ($class === '') {
             throw new InvalidSourceStructureException('Invalid literal: missing class attribute');
         }
         
@@ -271,13 +313,13 @@ class ASTBuilder
     {
         $name = $element->getAttribute('name');
         
-        if (!$name) {
+        if ($name === '') {
             throw new InvalidSourceStructureException('Invalid variable: missing name attribute');
         }
         
         return new Variable($name);
     }
-        
+    
     /**
      * Process a message send element
      * 
@@ -289,40 +331,58 @@ class ASTBuilder
     {
         $selector = $element->getAttribute('selector');
         
-        if (!$selector) {
+        if ($selector === '') {
             throw new InvalidSourceStructureException('Invalid message send: missing selector attribute');
         }
         
         // Get receiver expression
-        $exprElements = $element->getElementsByTagName('expr');
-        if ($exprElements->length < 1) {
+        $receiverExpr = null;
+        /** @var DOMNodeList<DOMNode> $childNodes */
+        $childNodes = $element->childNodes;
+        
+        foreach ($childNodes as $childNode) {
+            if ($childNode instanceof DOMElement && $childNode->nodeName === 'expr') {
+                $receiverExpr = $this->processExpression($childNode);
+                break;
+            }
+        }
+        
+        if ($receiverExpr === null) {
             throw new InvalidSourceStructureException('Invalid message send: missing receiver expression');
         }
         
-        $receiverExprElement = $exprElements->item(0);
-        if (!($receiverExprElement instanceof DOMElement)) {
-            throw new InvalidSourceStructureException('Invalid message send: receiver is not a DOMElement');
-        }
-        
-        $receiverExpr = $this->processExpression($receiverExprElement);
         $messageSend = new MessageSend($selector, $receiverExpr);
         
         // Process arguments
-        $argElements = $element->getElementsByTagName('arg');
-        foreach ($argElements as $argElement) {
-            
-            // Get argument expression
-            $argExprElements = $argElement->getElementsByTagName('expr');
-            if ($argExprElements->length !== 1) {
-                throw new InvalidSourceStructureException('Invalid message send: argument must contain exactly one expr');
+        $args = [];
+        
+        foreach ($childNodes as $childNode) {
+            if ($childNode instanceof DOMElement && $childNode->nodeName === 'arg') {
+                $order = (int)$childNode->getAttribute('order');
+                
+                // Find expr element in arg element
+                $argExpr = null;
+                /** @var DOMNodeList<DOMNode> $argChildNodes */
+                $argChildNodes = $childNode->childNodes;
+                
+                foreach ($argChildNodes as $argChild) {
+                    if ($argChild instanceof DOMElement && $argChild->nodeName === 'expr') {
+                        $argExpr = $this->processExpression($argChild);
+                        break;
+                    }
+                }
+                
+                if ($argExpr === null) {
+                    throw new InvalidSourceStructureException('Invalid message send: argument must contain expr');
+                }
+                
+                $args[$order] = $argExpr;
             }
-            
-            $argExprElement = $argExprElements->item(0);
-            if (!($argExprElement instanceof DOMElement)) {
-                throw new InvalidSourceStructureException('Invalid message send: argument expr is not a DOMElement');
-            }
-            
-            $argExpr = $this->processExpression($argExprElement);
+        }
+        
+        // Sort and add arguments by order
+        ksort($args);
+        foreach ($args as $argExpr) {
             $messageSend->addArgument($argExpr);
         }
         

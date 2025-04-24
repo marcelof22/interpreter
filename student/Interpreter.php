@@ -48,14 +48,14 @@ class Interpreter extends AbstractInterpreter
     public function execute(): int
     {
         try {
-            // Parse the XML to AST
+            // Parsovanie XML na AST
             $xml = $this->source->getDOMDocument();
             $program = $this->astBuilder->buildFromXML($xml);
             
-            // Execute the program
+            // Vykonanie programu
             $this->interpreter->execute($program);
             
-            // Success
+            // Úspech
             return ReturnCode::OK;
         } catch (DoNotUnderstandException $e) {
             // Runtime error - message not understood
@@ -69,6 +69,18 @@ class Interpreter extends AbstractInterpreter
             // Runtime error - value error
             $this->stderr->writeString($e->getMessage() . PHP_EOL);
             return ReturnCode::INTERPRET_VALUE_ERROR;
+        } catch (\IPP\Core\Exception\XMLException $e) {
+            // XML parsing error
+            $this->stderr->writeString($e->getMessage() . PHP_EOL);
+            return ReturnCode::INVALID_XML_ERROR; // Použiť správnu konštantu z ReturnCode
+        } catch (\IPP\Student\Exception\InvalidSourceStructureException $e) {
+            // Unexpected XML structure
+            $this->stderr->writeString($e->getMessage() . PHP_EOL);
+            return ReturnCode::INVALID_SOURCE_STRUCTURE_ERROR; // Použiť správnu konštantu z ReturnCode
+        } catch (\Exception $e) {
+            // Other errors
+            $this->stderr->writeString("Unexpected error: " . $e->getMessage() . PHP_EOL);
+            return ReturnCode::INTERNAL_ERROR;
         }
     }
 }

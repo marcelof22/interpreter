@@ -123,15 +123,26 @@ class SOLClass extends SOLObject
      * @return SOLObject Result of the method invocation
      * @throws DoNotUnderstandException If the method is not found
      */
+    // V SOLClass.php, metoda invokeMethod
     public function invokeMethod(
         SOLObject $receiver,
         string $selector,
         array $arguments,
         bool $useSuper = false
     ): SOLObject {
+        error_log("SOLClass: Looking up method '$selector' in class '{$this->name}', useSuper: " . ($useSuper ? 'true' : 'false'));
+        
         $method = $this->lookupMethod($selector, $useSuper);
         
         if (!$method) {
+            // Zkusme najít vestavěnou metodu v registry
+            $registry = $this->getClassRegistry()->getBuiltInMethodRegistry();
+            $result = $registry->executeMethod($this->getClassRegistry()->getEnvironment(), $receiver, $selector, $arguments, $receiver instanceof SOLClass);
+            
+            if ($result !== null) {
+                return $result;
+            }
+            
             throw new DoNotUnderstandException("Method '$selector' not found in class '{$this->name}'");
         }
         

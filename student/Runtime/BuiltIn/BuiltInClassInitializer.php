@@ -182,6 +182,21 @@ class BuiltInClassInitializer
     {
         $registry = $objectClass->getClass()->getClassRegistry()->getBuiltInMethodRegistry();
         
+            // Přidejme novou metodu
+        $registry->registerClassMethod('Object', 'new', 
+            new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) {
+                if (count($arguments) !== 0) {
+                    throw new DoNotUnderstandException('Class method new expected 0 arguments');
+                }
+                
+                if (!($receiver instanceof SOLClass)) {
+                    throw new TypeErrorException('Receiver of new must be a Class');
+                }
+                
+                return $receiver->newInstance();
+            })
+        );
+
         // identicalTo:
         $registry->registerMethod('Object', 'identicalTo:', 
             new SimpleBuiltInMethod(function(Environment $env, SOLObject $receiver, array $arguments) use ($factory) {

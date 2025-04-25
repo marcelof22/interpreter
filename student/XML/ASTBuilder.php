@@ -110,16 +110,19 @@ class ASTBuilder
             throw new InvalidSourceStructureException('Invalid method: missing selector attribute');
         }
         
-        // Process block element (method body)
-        /** @var DOMNodeList<DOMNode> $blockElements */
-        $blockElements = $element->getElementsByTagName('block');
-        if ($blockElements->length !== 1) {
-            throw new InvalidSourceStructureException('Invalid method: must contain exactly one block');
+        // Najdi přímý blok potomek
+        $blockElement = null;
+        foreach ($element->childNodes as $child) {
+            if ($child instanceof DOMElement && $child->nodeName === 'block') {
+                if ($blockElement !== null) {
+                    throw new InvalidSourceStructureException('Invalid method: must contain exactly one block');
+                }
+                $blockElement = $child;
+            }
         }
         
-        $blockElement = $blockElements->item(0);
-        if (!($blockElement instanceof DOMElement)) {
-            throw new InvalidSourceStructureException('Invalid method: block element is not a DOMElement');
+        if ($blockElement === null) {
+            throw new InvalidSourceStructureException('Invalid method: must contain exactly one block');
         }
         
         $block = $this->processBlock($blockElement);
@@ -210,13 +213,14 @@ class ASTBuilder
     {
         // Get var element - looking only for direct children
         $varElement = null;
-        /** @var DOMNodeList<DOMNode> $childNodes */
-        $childNodes = $element->childNodes;
-        
-        foreach ($childNodes as $childNode) {
-            if ($childNode instanceof DOMElement && $childNode->nodeName === 'var') {
-                $varElement = $childNode;
-                break;
+        $exprElement = null;
+        foreach ($element->childNodes as $childNode) {
+            if ($childNode instanceof DOMElement) {
+                if ($childNode->nodeName === 'var') {
+                    $varElement = $childNode;
+                } else if ($childNode->nodeName === 'expr') {
+                    $exprElement = $childNode;
+                }
             }
         }
         
@@ -228,15 +232,6 @@ class ASTBuilder
         
         if ($varName === '') {
             throw new InvalidSourceStructureException('Invalid assignment: variable has no name');
-        }
-        
-        // Get expression element - looking only for direct children
-        $exprElement = null;
-        foreach ($childNodes as $childNode) {
-            if ($childNode instanceof DOMElement && $childNode->nodeName === 'expr') {
-                $exprElement = $childNode;
-                break;
-            }
         }
         
         if (!$exprElement) {
@@ -335,13 +330,10 @@ class ASTBuilder
             throw new InvalidSourceStructureException('Invalid message send: missing selector attribute');
         }
         
-        // Get receiver expression
+        // Get receiver expression - looking only for direct children
         $receiverExpr = null;
-        /** @var DOMNodeList<DOMNode> $childNodes */
-        $childNodes = $element->childNodes;
-        
-        foreach ($childNodes as $childNode) {
-            if ($childNode instanceof DOMElement && $childNode->nodeName === 'expr') {
+        foreach ($element->childNodes as $childNode) {
+            if ($childNode instanceof DOMElement && $childNode->nodeName === 'expr' && !$receiverExpr) {
                 $receiverExpr = $this->processExpression($childNode);
                 break;
             }
@@ -353,19 +345,15 @@ class ASTBuilder
         
         $messageSend = new MessageSend($selector, $receiverExpr);
         
-        // Process arguments
+        // Process arguments - looking only for direct children
         $args = [];
-        
-        foreach ($childNodes as $childNode) {
+        foreach ($element->childNodes as $childNode) {
             if ($childNode instanceof DOMElement && $childNode->nodeName === 'arg') {
                 $order = (int)$childNode->getAttribute('order');
                 
                 // Find expr element in arg element
                 $argExpr = null;
-                /** @var DOMNodeList<DOMNode> $argChildNodes */
-                $argChildNodes = $childNode->childNodes;
-                
-                foreach ($argChildNodes as $argChild) {
+                foreach ($childNode->childNodes as $argChild) {
                     if ($argChild instanceof DOMElement && $argChild->nodeName === 'expr') {
                         $argExpr = $this->processExpression($argChild);
                         break;

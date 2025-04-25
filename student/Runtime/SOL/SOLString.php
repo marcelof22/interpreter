@@ -35,4 +35,19 @@ class SOLString extends SOLObject
     {
         return "'{$this->value}'";
     }
+
+    public function printValue(): void
+    {
+        // Zpracuj escape sekvence
+        $value = $this->getValue();
+        $value = str_replace("\\n", "\n", $value);
+        $value = str_replace("\\\\", "\\", $value);
+        $value = str_replace("\\'", "'", $value);
+        $value = str_replace('\\"', '"', $value);
+        
+        // Vypiš zpracovaný řetězec
+        echo $value;
+    }
+
+
 }
